@@ -3,7 +3,7 @@
 {% block content %}
     <article class="post">
         <aside class="actions">
-            {% if user.is_authenticated %}
+            {% if user == post.author %}
                 <a class="btn btn-default" href="{% url 'post_edit' pk=post.pk %}">
                     {% include './icons/pencil-fill.svg' %}
                 </a>
@@ -16,5 +16,29 @@
         {% endif %}
         <h2>{{ post.title }}</h2>
         <p>{{ post.text|linebreaksbr }}</p>
+        
+        <form action="{%url 'post_like' pk=post.pk%}" method="POST">
+            {%csrf_token%}
+            <button class="btn btn-primary btn-sm" name="post_pk" value="{{post.pk}}">like<br>{{post.likes.count}}</button>
+        </form>
+        <br>
+        <br>
+        <h2>Comments...</h2>
+        {% if not post.comments.all %}
+            No Comments..
+        {% else %}
+            {% for comment in post.comments.all %}
+                <strong>
+                    {{comment.name}} - {{comment.date_added}}
+                </strong>
+                <br>
+                {{comment.body}}
+                <br>
+            {% endfor %}
+        {% endif %}
+        <br>
+        <br>
+        <a href="{%url 'add_comment' pk=post.pk %}">add comment</a>
+        
     </article>
 {% endblock %}

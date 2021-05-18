@@ -1,9 +1,11 @@
+from django.http.response import HttpResponseRedirect
 from django.shortcuts import render
 from django.utils import timezone
-from .models import Post
+from .models import Comment, Post
 from django.shortcuts import render, get_object_or_404
-from .forms import PostForm
+from .forms import PostForm, CommentForm
 from django.shortcuts import redirect
+from django.urls import reverse
 
 
 def post_list(request):
@@ -37,3 +39,32 @@ def post_edit(request, pk):
     else:
         form = PostForm(instance=post)
     return render(request, 'blog/post_edit.html', {'form': form})
+
+def my_post(request):
+    try:
+        post = Post.objects.filter(author = request.user)
+    except:
+        return redirect('login')
+    return render(request, 'blog/my_post.html', {'posts':post})
+
+def post_like(request,pk):
+    if not request.user.is_authenticated:
+        return redirect('login')
+    post = get_object_or_404(Post,pk=request.POST.get('post_pk'))
+    post.likes.add(request.user)
+    return HttpResponseRedirect(reverse('post_detail',args=[str(pk)]))
+
+def add_comment(request,pk):
+    if request.method == "POST":
+        form = CommentForm(request.POST)
+        if form.is_valid():
+            comment = form.save(commit=False)
+            comment.name = request.user
+            post = get_object_or_404(Post,pk=pk)
+            comment.post = post
+            comment.published_date = timezone.now()
+            comment.save()
+            return redirect('post_detail', pk = pk)
+    else:
+        form = CommentForm()
+    return render(request, 'blog/add_comment.html', {'form': form})
