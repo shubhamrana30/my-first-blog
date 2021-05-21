@@ -1,4 +1,4 @@
-from django.http.response import HttpResponseRedirect
+from django.http.response import HttpResponseRedirect, HttpResponse
 from django.shortcuts import render
 from django.utils import timezone
 from .models import Comment, Post
@@ -15,6 +15,8 @@ def post_detail(request, pk):
     post = get_object_or_404(Post, pk=pk)
     return render(request, 'blog/post_detail.html', {'post': post})
 def post_new(request):
+    if not request.user.is_authenticated:
+        return redirect('login')
     if request.method == "POST":
         form = PostForm(request.POST)
         if form.is_valid():
@@ -27,18 +29,20 @@ def post_new(request):
         form = PostForm()
     return render(request, 'blog/post_edit.html', {'form': form})
 def post_edit(request, pk):
-    post = get_object_or_404(Post, pk=pk)
-    if request.method == "POST":
-        form = PostForm(request.POST, instance=post)
-        if form.is_valid():
-            post = form.save(commit=False)
-            post.author = request.user
-            post.published_date = timezone.now()
-            post.save()
-            return redirect('post_detail', pk=post.pk)
-    else:
-        form = PostForm(instance=post)
-    return render(request, 'blog/post_edit.html', {'form': form})
+    post = get_object_or_404(Post,pk=pk)
+    if request.user == post.author:
+        if request.method == "POST":
+            form = PostForm(request.POST, instance=post)
+            if form.is_valid():
+                post = form.save(commit=False)
+                post.author = request.user
+                post.published_date = timezone.now()
+                post.save()
+                return redirect('post_detail', pk=post.pk)
+        else:
+            form = PostForm(instance=post)
+        return render(request, 'blog/post_edit.html', {'form': form})
+    return render(request,'blog/error.html')
 
 def my_post(request):
     try:
@@ -68,3 +72,10 @@ def add_comment(request,pk):
     else:
         form = CommentForm()
     return render(request, 'blog/add_comment.html', {'form': form})
+
+def post_delete(request,pk):
+    post = get_object_or_404(Post,pk=pk)
+    if request.user == post.author:
+        post.delete()
+        return redirect('post_list')
+    return render(request,'blog/error.html',{})
